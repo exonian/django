@@ -14,6 +14,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     sql_create_index = "CREATE INDEX %(name)s ON %(table)s%(using)s (%(columns)s)%(extra)s"
     sql_create_varchar_index = "CREATE INDEX %(name)s ON %(table)s (%(columns)s varchar_pattern_ops)%(extra)s"
     sql_create_text_index = "CREATE INDEX %(name)s ON %(table)s (%(columns)s text_pattern_ops)%(extra)s"
+    sql_create_expression_index = "CREATE INDEX %(name)s ON %(table)s (%(expression)s)%(extra)s"
 
     def quote_value(self, value):
         return psycopg2.extensions.adapt(value)

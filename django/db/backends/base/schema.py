@@ -868,6 +868,10 @@ class BaseDatabaseSchemaEditor(object):
             tablespace_sql = " " + tablespace_sql
         return tablespace_sql
 
+    def _get_index_expression_sql(self, model, expression):
+        expression_sql = "lower('name')"  # return something usable, so we can at least see other bits working
+        return expression_sql
+
     def _create_index_sql(self, model, fields, suffix="", sql=None):
         """
         Return the SQL statement to create the index for one or several fields.

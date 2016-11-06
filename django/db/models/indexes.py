@@ -4,7 +4,7 @@ import hashlib
 
 from django.utils.encoding import force_bytes
 
-__all__ = [str('Index')]
+__all__ = [str('Index'), str('ExpressionIndex')]
 
 # The max length of the names of the indexes (restricted to 30 due to Oracle)
 MAX_NAME_LENGTH = 30
@@ -117,3 +117,54 @@ class Index(object):
 
     def __ne__(self, other):
         return not (self == other)
+
+
+class ExpressionIndex(Index):
+    suffix = 'exp'
+
+    def __init__(self, expression, name=None):
+        self.expression = expression
+        super(ExpressionIndex, self).__init__(fields=['name'], name=name)
+
+    def create_sql(self, model, schema_editor, using=''):
+        fields = []
+        # I don't know how to get the fields
+        tablespace_sql = schema_editor._get_index_tablespace_sql(model, fields)
+        expression_sql = schema_editor._get_index_expression_sql(model, self.expression)
+        quote_name = schema_editor.quote_name
+        return schema_editor.sql_create_expression_index % {
+            'table': quote_name(model._meta.db_table),
+            'name': quote_name(self.name),
+            'expression': expression_sql,
+            'using': using,
+            'extra': tablespace_sql,
+        }
+
+    def deconstruct(self):
+        path = '%s.%s' % (self.__class__.__module__, self.__class__.__name__)
+        path = path.replace('django.db.models.indexes', 'django.db.models')
+        return (path, (), {'expression': self.expression, 'name': self.name})
+
+    def set_name_with_model(self, model):
+        """
+        Generate a unique name for the index.
+
+        The name is divided into 3 parts - table name (12 chars), expression
+        (8 chars) and unique hash + suffix (10 chars). Each part is made to
+        fit its size by truncating the excess length.
+        """
+        table_name = model._meta.db_table
+        hash_data = [table_name, self.expression, self.suffix]
+        self.name = '%s_%s_%s' % (
+            table_name[:11],
+            str(self.expression)[:7],
+            '%s_%s' % (self._hash_generator(*hash_data), self.suffix),
+        )
+        assert len(self.name) <= 30, (
+            'Index too long for multiple database support. Is self.suffix '
+            'longer than 3 characters?'
+        )
+        self.check_name()
+
+    def __repr__(self):
+        return "<%s: expression='%s'>" % (self.__class__.__name__, self.expression)
